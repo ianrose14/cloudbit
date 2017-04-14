@@ -1,0 +1,67 @@
+<html>
+
+<body>
+<div id="status">waiting...</div>
+<center>
+<img src="/static/cupcakes.jpg">
+</center>
+
+<script>
+var win;
+
+function setStatus(s) {
+  document.getElementById('status').innerText = (new Date()).toISOString() + ' ' + s;
+}
+
+function startVideo(url, durationMs) {
+  if (win) {
+    win.close();
+  }
+  win = window.open(url);
+
+  window.setTimeout(function() {
+    setStatus('closing window');
+    win.close();
+    win = null;
+
+    xhr('/stop', function() {
+      setStatus('/stop was successful');
+    });
+  }, durationMs);
+}
+
+function xhr(url, cb) {
+  var xhr = new XMLHttpRequest();
+  xhr.addEventListener('load', function() {
+    if (xhr.status <= 299) {
+      cb(xhr.responseText);
+      return;
+    }
+    setStatus('request failed');
+  });
+  xhr.open('GET', url, true);
+  xhr.send();
+}
+
+window.setInterval(function() {
+  if (win) {
+    return;
+  }
+
+  // check if we should start
+  xhr('/poll', function(responseText) {
+    var o = JSON.parse(responseText);
+    if (o.found) {
+      setStatus('playing ' + o.url + ' for ' + o.durationMs + ' milliseconds');
+      startVideo(o.url, o.durationMs);
+      return;
+    }
+    setStatus('message not found');
+    return;
+  });
+},500);
+
+</script>
+
+</body>
+</html>
